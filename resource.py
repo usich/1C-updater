@@ -1,9 +1,13 @@
 import os
 import subprocess
+import threading
 import time
+from urllib.parse import urlencode
 
 from flask import request
 from flask_restful import Resource
+
+import requests as requests_basic
 
 
 class CheckIsOnline(Resource):
@@ -168,3 +172,32 @@ class CheckUpdate1C(Resource):
         open('C:/ftp/log-update-db.txt', 'w', encoding='ANSI').close()
         return {'msg': 'success',
                 'logs': logs_update}, 201
+
+
+class DownloadFileInYaDisk(Resource):
+
+    def get(self):
+        data = request.args
+        public_key = data.get('url-file')
+
+        base_url = 'https://cloud-api.yandex.net/v1/disk/public/resources/?'
+        final_url = base_url + urlencode(dict(public_key=public_key))
+
+        def download():
+            response = requests_basic.get(final_url)
+            download_url = response.json()
+            download_response = requests_basic.get(download_url['file'])
+
+            with open(f'C:/ftp/{download_url["name"]}', 'wb') as f:  # Здесь укажите нужный путь к файлу
+                f.write(download_response.content)
+
+        threading.Thread(target=download).start()
+
+        return {'msg': 'success'}, 201
+
+
+class Test1C(Resource):
+    def post(self):
+        print('post')
+        print(request.json)
+        return {}, 201
